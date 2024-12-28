@@ -4,13 +4,15 @@
   "version": "0.0.1",
   "type": "module",
   "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "browser": "dist/browser/index.js",
   "files": [
     "dist/",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup ./src/index.ts --outDir ./dist --dts --sourcemap inline",
+    "build": "tsup ./src/index.ts --outDir ./dist --dts --sourcemap inline --format esm,cjs,iife --global-name RxDBPGLiteStorage",
     "test": "npm run build && node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "prepublishOnly": "npm run build"
   },
