@@ -19,6 +19,8 @@ export type PGLiteSettings = {
      * If true, the database will be opened in read-only mode
      */
     readonly?: boolean;
+
+    disableNormalizePath?: boolean;
 };
 
 export type PGLiteStorageInternals<RxDocType> = {
