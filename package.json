@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "tsup ./src/index.ts --outDir ./dist --dts --sourcemap inline",
-    "test": "npm run build && ava",
+    "test": "npm run build && node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -33,13 +33,13 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.15",
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.24",
-    "ava": "^6.2.0",
-    "esbuild": "^0.24.2",
-    "esbuild-register": "^3.6.0",
-    "esbuild-runner": "^2.2.2",
+    "jest": "^29.7.0",
     "rxdb": "^16.0.0-beta.10",
     "rxjs": "^7.8.1",
+    "ts-jest": "^29.1.2",
     "tsup": "^8.3.5",
     "typescript": "^5.4.2"
   },

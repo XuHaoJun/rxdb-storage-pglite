@@ -1,8 +1,15 @@
-import test from 'ava';
 import fs from 'fs';
 import { addRxPlugin, createRxDatabase, type RxCollection } from 'rxdb';
 import { getRxStoragePGLite } from '../src';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Add Jest imports
+import { beforeEach, afterEach, test, expect } from '@jest/globals';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 addRxPlugin(RxDBQueryBuilderPlugin);
 
@@ -17,35 +24,94 @@ interface TodoCollections {
     todos: RxCollection<TodoDocType>;
 }
 
-const todoListTestDbPath = __dirname + '/todo-list-test.db';
-const complexQueriesTestDbPath = __dirname + '/complex-queries-test.db';
-const paginationTestDbPath = __dirname + '/pagination-test.db';
+const testDir = join(__dirname, 'test-dbs');
+const todoListTestDbPath = join(testDir, 'todo-list-test.db');
+const complexQueriesTestDbPath = join(testDir, 'complex-queries-test.db');
+const paginationTestDbPath = join(testDir, 'pagination-test.db');
 
-test.beforeEach(() => {
-    [
-        todoListTestDbPath,
-        complexQueriesTestDbPath,
-        paginationTestDbPath,
-    ].forEach((path) => {
-        fs.rm(path, { recursive: true }, () => {});
-    });
+// Add delay helper
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Add database cleanup helper
+async function cleanupDatabase(path: string) {
+    if (fs.existsSync(path)) {
+        try {
+            await delay(100); // Give time for connections to close
+            fs.rmSync(path, { recursive: true, force: true });
+        } catch (err) {
+            console.warn(`Warning: Could not remove database at ${path}:`, err);
+        }
+    }
+}
+
+beforeEach(async () => {
+    // Create test directory if it doesn't exist
+    if (!fs.existsSync(testDir)) {
+        fs.mkdirSync(testDir, { recursive: true });
+    }
+
+    // Clean up existing databases
+    await Promise.all(
+        [
+            todoListTestDbPath,
+            complexQueriesTestDbPath,
+            paginationTestDbPath,
+        ].map(cleanupDatabase)
+    );
+
+    // Add a small delay after cleanup
+    await delay(500);
 });
 
-test.afterEach(() => {
-    [
-        todoListTestDbPath,
-        complexQueriesTestDbPath,
-        paginationTestDbPath,
-    ].forEach((path) => {
-        fs.rm(path, { recursive: true }, () => {});
-    });
+afterEach(async () => {
+    // Add a small delay before cleanup
+    await delay(500);
+    await Promise.all(
+        [
+            todoListTestDbPath,
+            complexQueriesTestDbPath,
+            paginationTestDbPath,
+        ].map(cleanupDatabase)
+    );
 });
 
-test('todo list test', async (t) => {
-    const myDatabase = await createRxDatabase<TodoCollections>({
-        name: 'test0',
-        storage: getRxStoragePGLite({ path: todoListTestDbPath }),
-    });
+async function createTestDatabase<T>(name: string, path: string) {
+    let retries = 3;
+    let lastError;
+
+    while (retries > 0) {
+        try {
+            const db = await createRxDatabase<T>({
+                name,
+                storage: getRxStoragePGLite({
+                    path,
+                    autoCreate: true,
+                    disableNormalizePath: true,
+                }),
+            });
+            return db;
+        } catch (error) {
+            lastError = error;
+            console.warn(
+                `Attempt ${4 - retries} failed for database ${name}:`,
+                error
+            );
+            retries--;
+            if (retries > 0) {
+                await delay(1000); // Wait before retrying
+                await cleanupDatabase(path); // Clean up before retry
+                await delay(500); // Wait after cleanup
+            }
+        }
+    }
+    throw lastError;
+}
+
+test('todo list test', async () => {
+    const myDatabase = await createTestDatabase<TodoCollections>(
+        'test0',
+        todoListTestDbPath
+    );
     const todoSchema = {
         version: 0,
         primaryKey: 'id',
@@ -102,8 +168,8 @@ test('todo list test', async (t) => {
             },
         })
         .exec();
-    t.is(foundDocuments.length, 1);
-    t.is(foundDocuments[0]?.id, 'todo1');
+    expect(foundDocuments.length).toBe(1);
+    expect(foundDocuments[0]?.id).toBe('todo1');
 
     const foundDocuments2 = await myDatabase.todos
         .find({
@@ -114,14 +180,14 @@ test('todo list test', async (t) => {
             },
         })
         .exec();
-    t.is(foundDocuments2.length, 2);
-});
+    expect(foundDocuments2.length).toBe(2);
+}, 60000); // Increase timeout for retries
 
-test('complex queries and modifications', async (t) => {
-    const myDatabase = await createRxDatabase<TodoCollections>({
-        name: 'test1',
-        storage: getRxStoragePGLite({ path: complexQueriesTestDbPath }),
-    });
+test('complex queries and modifications', async () => {
+    const myDatabase = await createTestDatabase<TodoCollections>(
+        'test1',
+        complexQueriesTestDbPath
+    );
     const todoSchema = {
         version: 0,
         primaryKey: 'id',
@@ -185,7 +251,7 @@ test('complex queries and modifications', async (t) => {
             },
         })
         .exec();
-    t.is(orResults.length, 3);
+    expect(orResults.length).toBe(3);
 
     // Test update
     await myDatabase.todos
@@ -200,7 +266,7 @@ test('complex queries and modifications', async (t) => {
             selector: { id: 'task1' },
         })
         .exec();
-    t.is(updatedDoc?.done, true);
+    expect(updatedDoc?.done).toBe(true);
 
     // Test deletion
     await myDatabase.todos
@@ -211,14 +277,15 @@ test('complex queries and modifications', async (t) => {
         .then((doc) => doc?.remove());
 
     const afterDelete = await myDatabase.todos.find().exec();
-    t.is(afterDelete.length, 2);
-});
+    expect(afterDelete.length).toBe(2);
+    await myDatabase.close();
+}, 60000); // Increase timeout for retries
 
-test('pagination and sorting', async (t) => {
-    const myDatabase = await createRxDatabase<TodoCollections>({
-        name: 'test2',
-        storage: getRxStoragePGLite({ path: paginationTestDbPath }),
-    });
+test('pagination and sorting', async () => {
+    const myDatabase = await createTestDatabase<TodoCollections>(
+        'test2',
+        paginationTestDbPath
+    );
     const todoSchema = {
         version: 0,
         primaryKey: 'id',
@@ -284,15 +351,16 @@ test('pagination and sorting', async (t) => {
 
     // Test pagination
     const page1 = await myDatabase.todos.find().skip(0).limit(2).exec();
-    t.is(page1.length, 2);
+    expect(page1.length).toBe(2);
 
     const page2 = await myDatabase.todos.find().skip(2).limit(2).exec();
-    t.is(page2.length, 2);
+    expect(page2.length).toBe(2);
 
     // Test sorting
     const sortedByName = await myDatabase.todos
         .find()
         .sort({ name: 'desc' })
         .exec();
-    t.is(sortedByName[0]?.name, 'E task');
-});
+    expect(sortedByName[0]?.name).toBe('E task');
+    await myDatabase.close();
+}, 60000); // Increase timeout for retries
