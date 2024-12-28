@@ -1,0 +1,49 @@
+{
+  "name": "@xuhaojun/rxdb-storage-pglite",
+  "repository": "xuhaojun/rxdb-storage-pglite",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup ./src/index.ts --outDir ./dist --dts --sourcemap inline",
+    "test": "npm run build && ava",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "postgres",
+    "typescript",
+    "pglite",
+    "rxdb",
+    "rxjs",
+    "pglite-storage",
+    "pglite-rxdb-storage"
+  ],
+  "author": "xuhaojun <xuhaojuntw@gmail.com>",
+  "license": "MIT",
+  "description": "rxdb storage for pglite",
+  "peerDependencies": {
+    "@electric-sql/pglite": "*",
+    "rxdb": "*",
+    "rxjs": "*"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.15",
+    "@types/node": "^20.11.24",
+    "ava": "^6.2.0",
+    "esbuild": "^0.24.2",
+    "esbuild-register": "^3.6.0",
+    "esbuild-runner": "^2.2.2",
+    "rxdb": "^16.0.0-beta.10",
+    "rxjs": "^7.8.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "mongo-query-to-postgres-jsonb": "^0.2.17"
+  }
+}
