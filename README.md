@@ -5,13 +5,13 @@ This is a plugin for [RxDB](https://rxdb.info/) that allows you to use [PgLite](
 ## Installation
 
 ```bash
-npm install @xuhaojn/rxdb-storage-pglite @electric-sql/pglite
+npm install @xuhaojun/rxdb-storage-pglite @electric-sql/pglite
 ```
 
 ## Usage
 
 ```typescript
-import { createRxDBPgLite } from "@xuhaojn/rxdb-storage-pglite";
+import { getRxStoragePGLite } from "@xuhaojun/rxdb-storage-pglite";
 
 // nodejs with local file storage
 const myDatabase = await createRxDatabase<YourCollections>({
