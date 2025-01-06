@@ -20,6 +20,7 @@ import {
     documentToDbFormat,
     dbRowToDocument,
     mangoQueryToSql,
+    buildSortClause
 } from './pglite-helper';
 import { categorizeBulkWriteRows } from 'rxdb';
 
@@ -210,26 +211,7 @@ export class RxStorageInstancePGLite<RxDocType>
         const query = `
             SELECT id, data FROM "${this.internals.tableName}"
             ${sql}
-            ${
-                sort && Array.isArray(sort) && sort.length > 0
-                    ? `ORDER BY ${sort
-                          .map((sortObj) => {
-                              if (!sortObj || typeof sortObj !== 'object')
-                                  return '';
-                              const keys = Object.keys(sortObj);
-                              if (keys.length === 0) return '';
-                              const field = keys[0];
-                              const direction = String(
-                                  sortObj[field as keyof typeof sortObj]
-                              ).toUpperCase();
-                              if (direction !== 'ASC' && direction !== 'DESC')
-                                  return '';
-                              return `data->>'${field}' ${direction}`;
-                          })
-                          .filter(Boolean)
-                          .join(', ')}`
-                    : ''
-            }
+            ${buildSortClause(sort)}
             ${skip ? `OFFSET ${skip}` : ''}
             ${limit ? `LIMIT ${limit}` : ''}
         `;

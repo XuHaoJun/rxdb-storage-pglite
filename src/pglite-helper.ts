@@ -3,6 +3,7 @@ import type {
     MangoQuery,
     MangoQuerySelector,
     RxJsonSchema,
+    MangoQuerySortPart
 } from 'rxdb';
 import { getComposedPrimaryKeyOfDocumentData } from 'rxdb';
 import mToPsql from 'mongo-query-to-postgres-jsonb';
@@ -244,6 +245,30 @@ export function mangoQueryToSql(query: MangoQuery<any>): {
         sql: result ? `WHERE ${result}` : '',
         params: [],
     };
+}
+
+/**
+ * Builds an ORDER BY clause from a sort array
+ */
+export function buildSortClause(sort: MangoQuerySortPart[] | undefined): string {
+    if (!sort || !Array.isArray(sort) || sort.length === 0) {
+        return '';
+    }
+
+    const sortParts = sort
+        .map((sortObj) => {
+            if (!sortObj || typeof sortObj !== 'object') return '';
+            const keys = Object.keys(sortObj);
+            if (keys.length === 0) return '';
+            const field = keys[0];
+            const direction = String(sortObj[field as keyof typeof sortObj]).toUpperCase();
+            if (direction !== 'ASC' && direction !== 'DESC') return '';
+            return `data->>'${field}' ${direction}`;
+        })
+        .filter(Boolean)
+        .join(', ');
+
+    return sortParts ? `ORDER BY ${sortParts}` : '';
 }
 
 /**
